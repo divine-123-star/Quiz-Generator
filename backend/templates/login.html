@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AI Quiz Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-bg: #ecf0f1;
+            --dark-text: #2c3e50;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gradient-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="grad" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" /><stop offset="100%" style="stop-color:rgba(255,255,255,0);stop-opacity:1" /></radialGradient></defs><circle cx="20" cy="20" r="2" fill="url(%23grad)"><animate attributeName="r" values="2;5;2" duration="4s" repeatCount="indefinite"/></circle><circle cx="80" cy="40" r="3" fill="url(%23grad)"><animate attributeName="r" values="3;6;3" duration="5s" repeatCount="indefinite"/></circle><circle cx="40" cy="80" r="2" fill="url(%23grad)"><animate attributeName="r" values="2;4;2" duration="3s" repeatCount="indefinite"/></circle></svg>') repeat;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Main Navigation */
+        .navbar {
+            background: rgba(44, 62, 80, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white !important;
+        }
+
+        .navbar-nav .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 0.5rem;
+            padding: 0.5rem 1rem !important;
+            border-radius: 20px;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: var(--secondary-color) !important;
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        .navbar-nav .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            color: white !important;
+        }
+
+        /* School Badge */
+        .school-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 3px solid rgba(255,255,255,0.5);
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .school-badge:hover {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .school-badge i {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            margin-bottom: 2px;
+        }
+
+        .school-badge .badge-text {
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--dark-text);
+            text-align: center;
+            line-height: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 100px;
+            position: relative;
+            z-index: 10;
+            min-height: calc(100vh - 100px);
+            display: flex;
+            align-items: center;
+            padding: 2rem 0;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .auth-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            position: relative;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 2.5rem 2rem 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .auth-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            animation: moveStars 20s linear infinite;
+        }
+
+        @keyframes moveStars {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-30px, -30px); }
+        }
+
+        .auth-header::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><path d="M0,20 C20,0 40,0 50,10 C60,20 80,20 100,0 V20 Z" fill="rgba(255,255,255,0.95)"/></svg>') no-repeat center bottom;
+            background-size: cover;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-icon {
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 3rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .card-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* Form Section */
+        .card-body {
+            padding: 2.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.8rem;
+            position: relative;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark-text);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            font-size: 1rem;
+        }
+
+        .form-label i {
+            margin-right: 10px;
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .form-control {
+            border: 3px solid #e8ecef;
+            border-radius: 15px;
+            padding: 15px 20px;
+            font-size: 1rem;
+            background: rgba(255,255,255,0.8);
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.15), 0 10px 25px rgba(0,0,0,0.1);
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        /* Password Toggle */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--secondary-color);
+        }
+
+        /* Submit Button */
+        .btn-login {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 50%, #667eea 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 18px 25px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            width: 100%;
+            margin-top: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-login:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Remember Me */
+        .form-check {
+            margin: 1.5rem 0;
+        }
+
+        .form-check-input {
+            border-radius: 4px;
+            border: 2px solid #e0e0e0;
+            width: 1.2em;
+            height: 1.2em;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .form-check-label {
+            color: var(--dark-text);
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }
+
+        /* Links */
+        .form-links {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid rgba(52, 152, 219, 0.1);
+        }
+
+        .form-links a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .form-links a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: auto;
+        }
+
+        /* Alert styling */
+        .alert {
+            border-radius: 15px;
+            border: none;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, rgba(39, 174, 96, 0.1) 0%, rgba(46, 204, 113, 0.1) 100%);
+            border-left: 4px solid var(--success-color);
+            color: var(--dark-text);
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(192, 57, 43, 0.1) 100%);
+            border-left: 4px solid var(--accent-color);
+            color: var(--dark-text);
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(41, 128, 185, 0.1) 100%);
+            border-left: 4px solid var(--secondary-color);
+            color: var(--dark-text);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .auth-container {
+                padding: 1rem;
+            }
+            
+            .auth-card {
+                border-radius: 20px;
+            }
+            
+            .auth-header {
+                padding: 2rem 1.5rem 1.5rem;
+            }
+            
+            .card-title {
+                font-size: 2rem;
+            }
+            
+            .card-body {
+                padding: 2rem 1.5rem;
+            }
+            
+            .school-badge {
+                width: 60px;
+                height: 60px;
+                top: 15px;
+                right: 15px;
+            }
+            
+            .school-badge i {
+                font-size: 1.4rem;
+            }
+
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-brain me-2"></i>AI Quiz Generator
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home me-1"></i>Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">
+                            <i class="fas fa-user-plus me-1"></i>Register
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- School Badge -->
+    <div class="school-badge">
+        <i class="fas fa-graduation-cap"></i>
+        <div class="badge-text">RMU<br>EXCELLENCE</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="auth-container">
+            <div class="auth-card">
+                <!-- Beautiful Header -->
+                <div class="auth-header">
+                    <div class="header-content">
+                        <div class="header-icon">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                        <h1 class="card-title">Welcome Back!</h1>
+                        <p class="card-subtitle">Sign in to your AI Quiz Generator account</p>
+                    </div>
+                </div>
+
+                <!-- Login Form -->
+                <div class="card-body">
+                    <!-- Alert area for messages -->
+                    <div id="alertArea">
+                        <!-- Demo alert for now -->
+                        <div class="alert alert-info" id="demoAlert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Demo Mode:</strong> Use any username/password to login
+                        </div>
+                    </div>
+
+                    <form id="loginForm" method="POST" action="/login">
+                        <!-- Username -->
+                        <div class="form-group">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-user"></i>Username or Email
+                            </label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   placeholder="Enter your username or email" required>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="form-group">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock"></i>Password
+                            </label>
+                            <div class="position-relative">
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Enter your password" required>
+                                <button type="button" class="password-toggle" id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Remember Me -->
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
+                            <label class="form-check-label" for="rememberMe">
+                                Remember me for 30 days
+                            </label>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn-login" id="loginBtn">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
+                    </form>
+
+                    <!-- Links -->
+                    <div class="form-links">
+                        <p class="text-muted mb-2">
+                            <a href="#" id="forgotPassword">Forgot your password?</a>
+                        </p>
+                        <p class="text-muted mb-0">
+                            Don't have an account? 
+                            <a href="/register">Create one now</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">
+                &copy; 2025 AI Quiz Generator. Made with <i class="fas fa-heart text-danger"></i> for Education.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Get elements
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const alertArea = document.getElementById('alertArea');
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+
+        // Show alert messages
+        function showAlert(message, type = 'info') {
+            const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+            const icon = type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle';
+            
+            alertArea.innerHTML = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="fas ${icon} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            // Auto-hide success messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    const alert = alertArea.querySelector('.alert');
+                    if (alert) {
+                        alert.classList.remove('show');
+                        setTimeout(() => alert.remove(), 300);
+                    }
+                }, 5000);
+            }
+        }
+
+        // Toggle password visibility
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            const icon = this.querySelector('i');
+            if (type === 'password') {
+                icon.className = 'fas fa-eye';
+            } else {
+                icon.className = 'fas fa-eye-slash';
+            }
+        });
+
+        // Form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Show loading state
+            loginBtn.innerHTML = '<div class="loading"></div><span class="ms-2">Signing In...</span>';
+            loginBtn.disabled = true;
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // Successful login
+                    loginBtn.innerHTML = '<i class="fas fa-check me-2"></i>Success!';
+                    loginBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+                    
+                    showAlert('🎉 ' + result.message, 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                } else {
+                    // Failed login
+                    throw new Error(result.error || 'Login failed');
+                }
+                
+            } catch (error) {
+                // Reset button
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Sign In';
+                loginBtn.disabled = false;
+                loginBtn.style.background = '';
+                
+                showAlert('❌ ' + error.message, 'error');
+            }
+        });
+
+        // Forgot password
+        document.getElementById('forgotPassword').addEventListener('click', function(e) {
+            e.preventDefault();
+            showAlert('🔄 Password reset functionality will be added soon!\n\nFor now, just use any password to login.', 'info');
+        });
+
+        // Add nice effects to form inputs
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+                this.parentElement.style.transition = 'all 0.3s ease';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+
+        // Auto-hide demo alert after 5 seconds
+        setTimeout(() => {
+            const alert = document.getElementById('demoAlert');
+            if (alert) {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => alert.remove(), 500);
+            }
+        }, 5000);
+
+        // Add school badge click effect
+        document.querySelector('.school-badge').addEventListener('click', function() {
+            this.style.transform = 'scale(1.2) rotate(360deg)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1) rotate(0deg)';
+            }, 600);
+        });
+    </script>
+</body>
+</html>

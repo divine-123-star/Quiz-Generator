@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - AI Quiz Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --success: #4facfe;
+            --danger: #ff6b6b;
+            --dark: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(44, 62, 80, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white !important;
+        }
+
+        .navbar-nav .nav-link {
+            color: rgba(255,255,255,0.9) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 0.5rem;
+            padding: 0.5rem 1rem !important;
+            border-radius: 20px;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: var(--secondary) !important;
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        .navbar-nav .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            color: white !important;
+        }
+
+        /* School Badge */
+        .school-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 3px solid rgba(255,255,255,0.5);
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .school-badge:hover {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .school-badge i {
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 2px;
+        }
+
+        .school-badge .badge-text {
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--dark);
+            text-align: center;
+            line-height: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 100px;
+            position: relative;
+            z-index: 10;
+            min-height: calc(100vh - 100px);
+            display: flex;
+            align-items: center;
+            padding: 2rem 0;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .auth-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .auth-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            color: white;
+            padding: 2.5rem 2rem 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .auth-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            animation: moveStars 20s linear infinite;
+        }
+
+        @keyframes moveStars {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-30px, -30px); }
+        }
+
+        .auth-header::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><path d="M0,20 C20,0 40,0 50,10 C60,20 80,20 100,0 V20 Z" fill="rgba(255,255,255,0.95)"/></svg>') no-repeat center bottom;
+            background-size: cover;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-icon {
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 3rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .card-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* Form Section */
+        .card-body {
+            padding: 2.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.8rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            font-size: 1rem;
+        }
+
+        .form-label i {
+            margin-right: 10px;
+            color: var(--primary);
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .form-control {
+            border: 3px solid #e8ecef;
+            border-radius: 15px;
+            padding: 15px 20px;
+            font-size: 1rem;
+            background: rgba(255,255,255,0.8);
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.15), 0 10px 25px rgba(0,0,0,0.1);
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        /* Password Requirements */
+        .password-requirements {
+            background: linear-gradient(135deg, #f8f9ff 0%, #fff0f8 100%);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .requirements-title {
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .requirement i {
+            margin-right: 10px;
+            width: 16px;
+            font-size: 0.8rem;
+        }
+
+        .requirement.valid {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .requirement.valid i {
+            color: var(--success);
+        }
+
+        /* Submit Button */
+        .btn-create {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 18px 25px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            width: 100%;
+            margin-top: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-create::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-create:hover::before {
+            left: 100%;
+        }
+
+        .btn-create:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-create:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Links */
+        .form-links {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .form-links a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .form-links a:hover {
+            color: var(--secondary);
+            text-decoration: underline;
+        }
+
+        /* Password Match */
+        .password-match {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .match-success {
+            color: var(--success);
+        }
+
+        .match-error {
+            color: var(--danger);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: auto;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .auth-container {
+                padding: 1rem;
+            }
+            
+            .auth-card {
+                border-radius: 20px;
+            }
+            
+            .auth-header {
+                padding: 2rem 1.5rem 1.5rem;
+            }
+            
+            .card-title {
+                font-size: 2rem;
+            }
+            
+            .card-body {
+                padding: 2rem 1.5rem;
+            }
+            
+            .school-badge {
+                width: 60px;
+                height: 60px;
+                top: 15px;
+                right: 15px;
+            }
+            
+            .school-badge i {
+                font-size: 1.4rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-brain me-2"></i>AI Quiz Generator
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home me-1"></i>Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/register">
+                            <i class="fas fa-user-plus me-1"></i>Register
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- School Badge -->
+    <div class="school-badge">
+        <i class="fas fa-graduation-cap"></i>
+        <div class="badge-text">RMU<br>EXCELLENCE</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="auth-container">
+            <div class="auth-card">
+                <!-- Header -->
+                <div class="auth-header">
+                    <div class="header-content">
+                        <div class="header-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <h1 class="card-title">Join Us Today!</h1>
+                        <p class="card-subtitle">Create your free AI Quiz Generator account</p>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="card-body">
+                    <form id="registrationForm" method="POST" action="/register">
+                        <!-- Full Name -->
+                        <div class="form-group">
+                            <label for="fullName" class="form-label">
+                                <i class="fas fa-user"></i>Full Name
+                            </label>
+                            <input type="text" class="form-control" id="fullName" name="fullName" 
+                                   placeholder="Enter your full name" required>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="form-group">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope"></i>Email Address
+                            </label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   placeholder="Enter your email address" required>
+                        </div>
+
+                        <!-- School Name -->
+                        <div class="form-group">
+                            <label for="schoolName" class="form-label">
+                                <i class="fas fa-school"></i>School Name (Optional)
+                            </label>
+                            <input type="text" class="form-control" id="schoolName" name="school_name" 
+                                   placeholder="Enter your school name">
+                        </div>
+
+                        <!-- Username -->
+                        <div class="form-group">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-at"></i>Username
+                            </label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   placeholder="Choose a unique username" required>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="form-group">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock"></i>Password
+                            </label>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Create a strong password" required>
+                            
+                            <!-- Password Requirements -->
+                            <div class="password-requirements">
+                                <div class="requirements-title">
+                                    <i class="fas fa-shield-alt me-2"></i>Password Requirements:
+                                </div>
+                                <div class="requirement" id="length">
+                                    <i class="fas fa-times"></i>At least 8 characters
+                                </div>
+                                <div class="requirement" id="uppercase">
+                                    <i class="fas fa-times"></i>At least one uppercase letter
+                                </div>
+                                <div class="requirement" id="number">
+                                    <i class="fas fa-times"></i>At least one number
+                                </div>
+                                <div class="requirement" id="special">
+                                    <i class="fas fa-times"></i>At least one special character
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="form-group">
+                            <label for="confirmPassword" class="form-label">
+                                <i class="fas fa-lock"></i>Confirm Password
+                            </label>
+                            <input type="password" class="form-control" id="confirmPassword" 
+                                   placeholder="Confirm your password" required>
+                            <div class="password-match" id="passwordMatch"></div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn-create" id="submitBtn" disabled>
+                            <i class="fas fa-rocket me-2"></i>Create My Account
+                        </button>
+                    </form>
+
+                    <!-- Links -->
+                    <div class="form-links">
+                        <p class="text-muted mb-0">
+                            Already have an account? 
+                            <a href="/login">Sign In Here</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">
+                &copy; 2025 AI Quiz Generator. Made with <i class="fas fa-heart text-danger"></i> for Education.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const form = document.getElementById('registrationForm');
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const submitBtn = document.getElementById('submitBtn');
+        const passwordMatch = document.getElementById('passwordMatch');
+        
+        const lengthReq = document.getElementById('length');
+        const uppercaseReq = document.getElementById('uppercase');
+        const numberReq = document.getElementById('number');
+        const specialReq = document.getElementById('special');
+
+        function checkPasswordRequirements() {
+            const value = password.value;
+            let validCount = 0;
+            
+            if (value.length >= 8) {
+                lengthReq.classList.add('valid');
+                lengthReq.querySelector('i').className = 'fas fa-check';
+                validCount++;
+            } else {
+                lengthReq.classList.remove('valid');
+                lengthReq.querySelector('i').className = 'fas fa-times';
+            }
+
+            if (/[A-Z]/.test(value)) {
+                uppercaseReq.classList.add('valid');
+                uppercaseReq.querySelector('i').className = 'fas fa-check';
+                validCount++;
+            } else {
+                uppercaseReq.classList.remove('valid');
+                uppercaseReq.querySelector('i').className = 'fas fa-times';
+            }
+
+            if (/[0-9]/.test(value)) {
+                numberReq.classList.add('valid');
+                numberReq.querySelector('i').className = 'fas fa-check';
+                validCount++;
+            } else {
+                numberReq.classList.remove('valid');
+                numberReq.querySelector('i').className = 'fas fa-times';
+            }
+
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+                specialReq.classList.add('valid');
+                specialReq.querySelector('i').className = 'fas fa-check';
+                validCount++;
+            } else {
+                specialReq.classList.remove('valid');
+                specialReq.querySelector('i').className = 'fas fa-times';
+            }
+
+            return validCount === 4;
+        }
+
+        function checkPasswordMatch() {
+            if (confirmPassword.value === '') {
+                passwordMatch.innerHTML = '';
+                return false;
+            }
+
+            if (password.value === confirmPassword.value) {
+                passwordMatch.innerHTML = '<i class="fas fa-check me-2"></i>Passwords match perfectly!';
+                passwordMatch.className = 'password-match match-success';
+                return true;
+            } else {
+                passwordMatch.innerHTML = '<i class="fas fa-times me-2"></i>Passwords do not match';
+                passwordMatch.className = 'password-match match-error';
+                return false;
+            }
+        }
+
+        function validateForm() {
+            const allFieldsFilled = document.getElementById('fullName').value.trim() !== '' && 
+                                   document.getElementById('email').value.trim() !== '' && 
+                                   document.getElementById('username').value.trim() !== '';
+            
+            const passwordValid = checkPasswordRequirements();
+            const passwordsMatch = checkPasswordMatch();
+
+            submitBtn.disabled = !(allFieldsFilled && passwordValid && passwordsMatch);
+        }
+
+        password.addEventListener('input', () => {
+            checkPasswordRequirements();
+            validateForm();
+        });
+
+        confirmPassword.addEventListener('input', () => {
+            checkPasswordMatch();
+            validateForm();
+        });
+
+        ['fullName', 'email', 'username'].forEach(id => {
+            document.getElementById(id).addEventListener('input', validateForm);
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            submitBtn.innerHTML = '<div class="loading"></div><span class="ms-2">Creating Account...</span>';
+            submitBtn.disabled = true;
+            
+            try {
+                const formData = new FormData(form);
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Account Created!';
+                    submitBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    throw new Error(result.error || 'Registration failed');
+                }
+                
+            } catch (error) {
+                submitBtn.innerHTML = '<i class="fas fa-rocket me-2"></i>Create My Account';
+                submitBtn.disabled = false;
+                submitBtn.style.background = '';
+                alert('Error: ' + error.message);
+            }
+        });
+
+        document.querySelector('.school-badge').addEventListener('click', function() {
+            this.style.transform = 'scale(1.2) rotate(360deg)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1) rotate(0deg)';
+            }, 600);
+        });
+    </script>
+</body>
+</html>

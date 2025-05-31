@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quiz Generator - Smart Learning Platform</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Beautiful Colors for Your School */
+        :root {
+            --primary-color: #2c3e50;      /* Dark blue */
+            --secondary-color: #3498db;    /* Light blue */
+            --accent-color: #e74c3c;       /* Red */
+            --success-color: #27ae60;      /* Green */
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--gradient);
+            min-height: 100vh;
+        }
+
+        /* School Badge in Corner */
+        .school-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            z-index: 1000;
+            border: 3px solid rgba(255,255,255,0.5);
+        }
+
+        .school-badge .badge-text {
+            font-size: 0.6rem;
+            font-weight: bold;
+            margin-top: 2px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        /* Main Hero Section */
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            opacity: 0.9;
+        }
+
+        /* Beautiful Buttons */
+        .btn-hero {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn-hero:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            color: white;
+        }
+
+        .btn-hero.primary {
+            background: rgba(255,255,255,0.9);
+            color: var(--primary-color);
+        }
+
+        .btn-hero.primary:hover {
+            background: white;
+            color: var(--primary-color);
+        }
+
+        /* Features Section */
+        .features-section {
+            background: white;
+            padding: 100px 0;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            border-top: 5px solid var(--gradient);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        /* Responsive Design for Mobile */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .school-badge {
+                width: 60px;
+                height: 60px;
+                font-size: 1.4rem;
+            }
+            
+            .btn-hero {
+                display: block;
+                margin: 10px auto;
+                max-width: 250px;
+            }
+        }
+
+        /* Floating Animation */
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <!-- School Badge (Your School Logo Area) -->
+    <div class="school-badge">
+        <i class="fas fa-graduation-cap"></i>
+        <div class="badge-text">YOUR SCHOOL</div>
+    </div>
+
+    <!-- Main Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="floating">
+                        <i class="fas fa-brain mb-4" style="font-size: 8rem; opacity: 0.3;"></i>
+                    </div>
+                    <h1 class="hero-title">AI Quiz Generator</h1>
+                    <p class="hero-subtitle">
+                        Transform any PDF document into smart, interactive quizzes! 
+                        Perfect for teachers, students, and anyone who wants to learn better.
+                    </p>
+                    
+                    <!-- Action Buttons -->
+                    <div class="hero-buttons">
+                        <a href="register.html" class="btn-hero primary">
+                            <i class="fas fa-rocket me-2"></i>Start Creating Quizzes!
+                        </a>
+                        <a href="login.html" class="btn-hero">
+                            <i class="fas fa-sign-in-alt me-2"></i>I Already Have Account
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="container">
+            <div class="row text-center mb-5">
+                <div class="col-12">
+                    <h2 class="display-4 fw-bold mb-3" style="color: var(--primary-color);">
+                        What Makes Us Special? ✨
+                    </h2>
+                    <p class="lead text-muted">Everything you need to create amazing quizzes</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- Feature 1 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <h3 class="feature-title">Upload Any PDF</h3>
+                        <p class="text-muted">
+                            Upload any PDF file - textbooks, notes, articles. 
+                            Our AI reads everything and creates perfect questions!
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3 class="feature-title">Smart AI Questions</h3>
+                        <p class="text-muted">
+                            Artificial Intelligence creates multiple choice, true/false, 
+                            and fill-in-the-blank questions automatically!
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="feature-title">Instant Grades</h3>
+                        <p class="text-muted">
+                            Get your results immediately with percentage scores 
+                            and detailed feedback on your performance!
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h3 class="feature-title">Download Results</h3>
+                        <p class="text-muted">
+                            Save your quiz results as PDF files. 
+                            Share with teachers or keep for your records!
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3 class="feature-title">Works Everywhere</h3>
+                        <p class="text-muted">
+                            Use on your phone, tablet, or computer. 
+                            Beautiful design that works perfectly anywhere!
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <h3 class="feature-title">Completely FREE!</h3>
+                        <p class="text-muted">
+                            No hidden costs, no monthly fees, no limits. 
+                            Use as much as you want, forever free!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section style="background: var(--gradient); color: white; padding: 80px 0; text-align: center;">
+        <div class="container">
+            <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">Ready to Start Learning? 🚀</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9;">
+                Join thousands of students and teachers who are already using our AI Quiz Generator!
+            </p>
+            <a href="register.html" class="btn-hero primary" style="font-size: 1.2rem; padding: 18px 50px;">
+                <i class="fas fa-user-plus me-2"></i>Create My Free Account Now!
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="background: #1a1a1a; color: white; text-align: center; padding: 40px 0;">
+        <div class="container">
+            <h4 style="color: var(--secondary-color); margin-bottom: 1rem;">
+                <i class="fas fa-brain me-2"></i>AI Quiz Generator
+            </h4>
+            <p style="opacity: 0.7; margin-bottom: 1rem;">
+                Making learning fun and easy with the power of Artificial Intelligence!
+            </p>
+            <p style="opacity: 0.5; margin: 0;">
+                &copy; 2025 AI Quiz Generator. Made with <i class="fas fa-heart text-danger"></i> for Education.
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Make school badge interactive
+        const schoolBadge = document.querySelector('.school-badge');
+        schoolBadge.addEventListener('click', function() {
+            this.style.transform = 'scale(1.1) rotate(360deg)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1) rotate(0deg)';
+            }, 500);
+        });
+
+        // Smooth scrolling for links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
