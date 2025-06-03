@@ -689,8 +689,8 @@
                         </div>
                     </div>
 
-                    <!-- REAL FORM that connects to Flask -->
-                    <form id="quizForm" enctype="multipart/form-data">
+                    <!-- FIXED FORM that connects to Flask -->
+                    <form id="quizForm" action="/create-quiz" method="POST" enctype="multipart/form-data">
                         <!-- File upload area -->
                         <div class="upload-area" id="uploadArea">
                             <div class="upload-icon">
@@ -941,8 +941,8 @@
             }
         }
 
-        // REAL FORM SUBMISSION TO FLASK
-        quizForm.addEventListener('submit', async function(e) {
+        // FIXED FORM SUBMISSION - No more async/fetch, just normal form submission
+        quizForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
             if (!selectedFile) {
@@ -950,39 +950,18 @@
                 return;
             }
             
-            // Move to step 3 and show loading
+            // Show loading animation
             updateStep(3);
             document.querySelector('.card-body').style.display = 'none';
             document.getElementById('loadingContainer').style.display = 'block';
             
-            // Create FormData object
-            const formData = new FormData(quizForm);
+            // Start loading animation
+            simulateProgress();
             
-            try {
-                // Show realistic loading progress
-                simulateProgress();
-                
-                // Send to Flask backend
-                const response = await fetch('/create-quiz', {
-                    method: 'POST',
-                    body: formData
-       });
-                
-                
-                const result = await response.json();
-                
-                if (response.ok && result.success) {
-                    // Success!
-                    showSuccessResult(result);
-                } else {
-                    // Error
-                    showErrorResult(result.error || 'An error occurred while creating the quiz.');
-                }
-                
-            } catch (error) {
-                console.error('Error:', error);
-                showErrorResult('Network error. Please check your connection and try again.');
-            }
+            // Submit the form normally to Flask (this will redirect to results page)
+            setTimeout(() => {
+                this.submit();
+            }, 1000); // Small delay to show loading animation
         });
 
         function simulateProgress() {
@@ -1002,9 +981,8 @@
             const interval = setInterval(() => {
                 progress += Math.random() * 15 + 5;
                 
-                if (progress >= 95) {
-                    progress = 95; // Don't complete until real response
-                    clearInterval(interval);
+                if (progress >= 90) {
+                    progress = 90; // Don't complete until form actually submits
                 }
                 
                 loadingBar.style.width = progress + '%';
@@ -1015,93 +993,6 @@
                     loadingText.textContent = loadingTexts[textIndex];
                 }
             }, 800);
-            
-            // Store interval to clear it later
-            window.progressInterval = interval;
-        }
-
-        function showSuccessResult(result) {
-            // Clear any intervals
-            if (window.progressInterval) {
-                clearInterval(window.progressInterval);
-            }
-            
-            // Complete the progress bar
-            document.getElementById('loadingBar').style.width = '100%';
-            
-            setTimeout(() => {
-                const loadingContainer = document.getElementById('loadingContainer');
-                loadingContainer.innerHTML = `
-                    <div style="text-align: center; padding: 2rem;">
-                        <div style="font-size: 5rem; color: var(--success); margin-bottom: 1rem;">
-                            🎉
-                        </div>
-                        <h3 style="color: var(--dark); margin-bottom: 1rem;">Quiz Created Successfully!</h3>
-                        <p style="color: #6c757d; margin-bottom: 2rem;">
-                            Your quiz "${result.quiz_id ? 'Quiz #' + result.quiz_id : 'new quiz'}" is ready with ${result.questions_count || 'multiple'} amazing questions!
-                        </p>
-                        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                            <button class="btn btn-primary btn-lg" onclick="takeQuiz(${result.quiz_id})" style="border-radius: 25px;">
-                                <i class="fas fa-play me-2"></i>Take Quiz Now!
-                            </button>
-                            <button class="btn btn-outline-secondary btn-lg" onclick="goToDashboard()" style="border-radius: 25px;">
-                                <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
-                            </button>
-                            <button class="btn btn-outline-primary btn-lg" onclick="createAnother()" style="border-radius: 25px;">
-                                <i class="fas fa-plus me-2"></i>Create Another
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }, 1000);
-        }
-
-        function showErrorResult(errorMessage) {
-            // Clear any intervals
-            if (window.progressInterval) {
-                clearInterval(window.progressInterval);
-            }
-            
-            const loadingContainer = document.getElementById('loadingContainer');
-            loadingContainer.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <div style="font-size: 4rem; color: var(--danger); margin-bottom: 1rem;">
-                        😞
-                    </div>
-                    <h3 style="color: var(--dark); margin-bottom: 1rem;">Oops! Something Went Wrong</h3>
-                    <p style="color: #6c757d; margin-bottom: 2rem;">
-                        ${errorMessage}
-                    </p>
-                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                        <button class="btn btn-primary btn-lg" onclick="tryAgain()" style="border-radius: 25px;">
-                            <i class="fas fa-redo me-2"></i>Try Again
-                        </button>
-                        <button class="btn btn-outline-secondary btn-lg" onclick="goToDashboard()" style="border-radius: 25px;">
-                            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function takeQuiz(quizId) {
-            if (quizId) {
-                window.location.href = `/quiz/${quizId}`;
-            } else {
-                showAlert('Quiz ID not found. Please check your dashboard.', 'error');
-            }
-        }
-
-        function goToDashboard() {
-            window.location.href = '/dashboard';
-        }
-
-        function createAnother() {
-            location.reload();
-        }
-
-        function tryAgain() {
-            location.reload();
         }
 
         // Add school badge click effect
