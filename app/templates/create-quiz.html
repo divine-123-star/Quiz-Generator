@@ -963,10 +963,11 @@
                 simulateProgress();
                 
                 // Send to Flask backend
-                const response = await fetch('/create-quiz.html', {
+                const response = await fetch('/create-quiz', {
                     method: 'POST',
                     body: formData
-                });
+       });
+                
                 
                 const result = await response.json();
                 

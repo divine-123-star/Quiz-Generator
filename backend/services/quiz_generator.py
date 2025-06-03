@@ -11,7 +11,7 @@ class GeminiQuizGenerator:
         # Configure Gemini AI
         self.api_key = "AIzaSyCq4EtrP-O7FJvBQcWH2C4x1RFERPMuJ98"
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
     
     def generate_quiz_from_text(self, text: str, settings: Dict[str, Any]) -> Dict[str, Any]:
         """

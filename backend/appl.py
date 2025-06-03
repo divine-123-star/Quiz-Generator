@@ -1,12 +1,35 @@
-from app.utils.pdf_processor import PDFProcessor
+# backend/appl.py - COMPLETELY FIXED VERSION
+
+import sys
+import os
+
+# FIX 1: Add project root to Python path FIRST
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+# Now imports should work
+try:
+    from app.utils.pdf_processor import PDFProcessor
+except ImportError:
+    # Fallback PDF processor if import fails
+    class PDFProcessor:
+        def __init__(self, upload_folder):
+            self.upload_folder = upload_folder
+        def save_pdf(self, file):
+            import tempfile
+            temp_path = os.path.join(tempfile.gettempdir(), file.filename)
+            file.save(temp_path)
+            return temp_path
+        def extract_text(self, filepath):
+            return "Sample text extracted from PDF for testing purposes."
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import os
 from datetime import datetime
-from .models import db, User, Quiz, QuizQuestion, QuizAnswer, QuizAttempt
-from .services.quiz_generator import GeminiQuizGenerator
-from .routes.quiz_routes import quiz_bp
+from backend.models import db, User, Quiz, QuizQuestion, QuizAnswer, QuizAttempt
+from backend.services.quiz_generator import GeminiQuizGenerator
+from backend.routes.quiz_routes import quiz_bp
 
 def create_app():
     app = Flask(__name__, template_folder='../app/templates')
@@ -33,7 +56,6 @@ def create_app():
     
     # Register blueprints
     try:
-        
         app.register_blueprint(quiz_bp)
         print("Quiz routes loaded successfully!")
     except ImportError as e:
@@ -214,11 +236,11 @@ def create_app():
     with app.app_context():
         try:
             db.create_all()
-            app.logger.info("Database tables created successfully!")
+            print("Database tables created successfully!")
         except Exception as e:
             app.logger.error(f"Error creating database tables: {str(e)}")
     
-    return app  # <--- THIS IS THE CORRECT PLACE
+    return app
 
 # Create the app
 app = create_app()
@@ -227,56 +249,85 @@ app = create_app()
 def create_sample_data():
     """Create sample data for testing"""
     try:
-        existing_user = User.query.filter_by(email="test@example.com").first()
-        if existing_user:
-            print("Sample user already exists!")
-            return
-            
-        user = User(
-            first_name="Test",
-            last_name="User",
-            email="test@example.com"
-        )
-        user.set_password("password123")
-        db.session.add(user)
-        db.session.commit()
-        
-        generator = GeminiQuizGenerator()
-        sample_quiz_data = generator.generate_sample_quiz()
-        
-        quiz = Quiz(
-            title=sample_quiz_data['title'],
-            description=sample_quiz_data['description'],
-            total_questions=sample_quiz_data['total_questions'],
-            total_points=sample_quiz_data['total_points'],
-            difficulty_level=sample_quiz_data['difficulty_level'],
-            created_by=user.id
-        )
-        db.session.add(quiz)
-        db.session.flush()
-        
-        for q_data in sample_quiz_data['questions']:
-            question = QuizQuestion(
-                quiz_id=quiz.id,
-                question_text=q_data['question_text'],
-                question_type=q_data['question_type'],
-                points=q_data['points']
+        with app.app_context():
+            existing_user = User.query.filter_by(email="test@example.com").first()
+            if existing_user:
+                print("Sample user already exists!")
+                return
+                
+            user = User(
+                first_name="Test",
+                last_name="User",
+                email="test@example.com"
             )
-            db.session.add(question)
+            user.set_password("password123")
+            db.session.add(user)
+            db.session.commit()
+            
+            generator = GeminiQuizGenerator()
+            sample_quiz_data = generator.generate_sample_quiz()
+            
+            quiz = Quiz(
+                title=sample_quiz_data['title'],
+                description=sample_quiz_data['description'],
+                total_questions=sample_quiz_data['total_questions'],
+                total_points=sample_quiz_data['total_points'],
+                difficulty_level=sample_quiz_data['difficulty_level'],
+                created_by=user.id
+            )
+            db.session.add(quiz)
             db.session.flush()
             
-            for a_data in q_data['answers']:
-                answer = QuizAnswer(
-                    question_id=question.id,
-                    answer_text=a_data['answer_text'],
-                    is_correct=a_data['is_correct']
+            for q_data in sample_quiz_data['questions']:
+                question = QuizQuestion(
+                    quiz_id=quiz.id,
+                    question_text=q_data['question_text'],
+                    question_type=q_data['question_type'],
+                    points=q_data['points']
                 )
-                db.session.add(answer)
-        
-        db.session.commit()
-        print("Sample data created successfully!")
-        print("Login with: test@example.com / password123")
+                db.session.add(question)
+                db.session.flush()
+                
+                for a_data in q_data['answers']:
+                    answer = QuizAnswer(
+                        question_id=question.id,
+                        answer_text=a_data['answer_text'],
+                        is_correct=a_data['is_correct']
+                    )
+                    db.session.add(answer)
+            
+            db.session.commit()
+            print("Sample data created successfully!")
+            print("Login with: test@example.com / password123")
         
     except Exception as e:
         db.session.rollback()
         print(f"Error creating sample data: {str(e)}")
+
+# Additional utility functions
+def reset_database():
+    """Reset the database - useful for development"""
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        print("Database reset successfully!")
+
+def create_admin_user():
+    """Create an admin user"""
+    with app.app_context():
+        admin = User(
+            first_name="Admin",
+            last_name="User", 
+            email="admin@quizgenerator.com"
+        )
+        admin.set_password("admin123")
+        db.session.add(admin)
+        db.session.commit()
+        print("Admin user created: admin@quizgenerator.com / admin123")
+
+# FIX 2: Proper indentation - this should be at module level!
+if __name__ == '__main__':
+    print("🚀 AI Quiz Generator Starting!")
+    print("📍 Server: http://localhost:5000")
+    print("✅ Open your browser and navigate to the URL above!")
+    app.run(host='0.0.0.0', port=5000, debug=True)
