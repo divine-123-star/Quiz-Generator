@@ -1,12 +1,12 @@
 from app.utils.pdf_processor import PDFProcessor
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
-from app.models import db, User, Quiz, QuizQuestion, QuizAnswer, QuizAttempt
-from app.services.quiz_generator import GeminiQuizGenerator
+from .models import db, User, Quiz, QuizQuestion, QuizAnswer, QuizAttempt
+from .services.quiz_generator import GeminiQuizGenerator
+from .routes.quiz_routes import quiz_bp
 
 def create_app():
     app = Flask(__name__, template_folder='../app/templates')
@@ -33,7 +33,7 @@ def create_app():
     
     # Register blueprints
     try:
-        from routes.quiz_routes import quiz_bp
+        
         app.register_blueprint(quiz_bp)
         print("Quiz routes loaded successfully!")
     except ImportError as e:

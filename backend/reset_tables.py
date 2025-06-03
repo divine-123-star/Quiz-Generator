@@ -1,4 +1,4 @@
-from backend.app import create_app
+from backend.appl import create_app
 from backend.models import db
 
 # Create the Flask app
