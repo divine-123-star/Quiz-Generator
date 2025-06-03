@@ -81,18 +81,21 @@
 
         /* Beautiful Buttons */
         .btn-hero {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            margin: 10px;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s ease;
-        }
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    margin: 10px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 0.1s ease;
+}
 
         .btn-hero:hover {
             background: rgba(255,255,255,0.3);
@@ -110,7 +113,7 @@
             background: white;
             color: var(--primary-color);
         }
-
+     
         /* Features Section */
         .features-section {
             background: white;
@@ -205,11 +208,13 @@
                     
                     <!-- Action Buttons -->
                     <div class="hero-buttons">
-                        <a href="register.html" class="btn-hero primary">
-                            <i class="fas fa-rocket me-2"></i>Start Creating Quizzes!
+                        
+                           <a href="/register" class="btn-hero primary">
+                          <i class="fas fa-rocket me-2"></i>Start Creating Quizzes!
+                          </a>
+                          <a href="/login" class="btn-hero">
+                          <i class="fas fa-sign-in-alt me-2"></i>I Already Have Account
                         </a>
-                        <a href="login.html" class="btn-hero">
-                            <i class="fas fa-sign-in-alt me-2"></i>I Already Have Account
                         </a>
                     </div>
                 </div>
