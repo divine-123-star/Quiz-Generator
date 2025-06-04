@@ -406,7 +406,130 @@ def create_app():
             extracted_text = pdf_processor.extract_text(filepath)
             return jsonify({'message': 'PDF uploaded', 'text_preview': extracted_text[:500]}), 201
         return jsonify({'error': 'Invalid file type'}), 400
+    
+@app.route('/quiz/<int:quiz_id>/submit', methods=['POST'])
+@login_required
+def submit_quiz(quiz_id):
+    """Submit quiz answers and calculate score"""
+    try:
+        quiz = Quiz.query.get_or_404(quiz_id)
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data received'}), 400
+        
+        user_answers = data.get('answers', {})
+        
+        # Create quiz attempt
+        attempt = QuizAttempt(
+            user_id=current_user.id,
+            quiz_id=quiz_id,
+            total_points=quiz.total_points
+        )
+        db.session.add(attempt)
+        db.session.flush()
+        
+        score = 0
+        questions = QuizQuestion.query.filter_by(quiz_id=quiz_id).all()
+        
+        # Process each question
+        for question in questions:
+            question_id_str = str(question.id)
+            user_answer_text = user_answers.get(question_id_str, '').strip()
+            
+            correct_answer = QuizAnswer.query.filter_by(
+                question_id=question.id, is_correct=True
+            ).first()
+            
+            is_correct = False
+            if correct_answer and user_answer_text:
+                if question.question_type in ['multiple_choice', 'true_false']:
+                    is_correct = user_answer_text.lower().strip() == correct_answer.answer_text.lower().strip()
+                else:
+                    # Basic partial match for short answers
+                    correct_words = set(correct_answer.answer_text.lower().split())
+                    user_words = set(user_answer_text.lower().split())
+                    if correct_words and len(user_words.intersection(correct_words)) / len(correct_words) >= 0.5:
+                        is_correct = True
+            
+            if is_correct:
+                score += question.points
+            
+            # Save user answer
+            user_answer = UserAnswer(
+                attempt_id=attempt.id,
+                question_id=question.id,
+                user_answer=user_answer_text,
+                is_correct=is_correct
+            )
+            db.session.add(user_answer)
+        
+        # Update attempt with score
+        attempt.score = score
+        attempt.calculate_percentage()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'attempt_id': attempt.id,
+            'score': score,
+            'total_points': quiz.total_points,
+            'percentage': float(attempt.percentage)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error submitting quiz: {str(e)}")
+        return jsonify({'success': False, 'error': f'Failed to submit quiz: {str(e)}'}), 500
 
+@app.route('/quiz/<int:quiz_id>/results/<int:attempt_id>')
+@login_required
+def quiz_results(quiz_id, attempt_id):
+    """Display quiz results"""
+    try:
+        attempt = QuizAttempt.query.filter_by(
+            id=attempt_id, user_id=current_user.id, quiz_id=quiz_id
+        ).first_or_404()
+        
+        quiz = Quiz.query.get_or_404(quiz_id)
+        
+        user_answers = db.session.query(UserAnswer, QuizQuestion).join(
+            QuizQuestion, UserAnswer.question_id == QuizQuestion.id
+        ).filter(UserAnswer.attempt_id == attempt_id).all()
+        
+        results_data = {
+            'quiz': {
+                'id': quiz.id,
+                'title': quiz.title,
+                'description': quiz.description,
+                'total_questions': quiz.total_questions,
+                'total_points': quiz.total_points
+            },
+            'attempt': {
+                'id': attempt.id,
+                'score': attempt.score,
+                'total_points': attempt.total_points,
+                'percentage': float(attempt.percentage) if attempt.percentage else 0,
+                'completed_at': attempt.completed_at.isoformat() if attempt.completed_at else None
+            },
+            'answers': []
+        }
+        
+        for user_answer, question in user_answers:
+            results_data['answers'].append({
+                'id': user_answer.id,
+                'question_text': question.question_text,
+                'user_answer': user_answer.user_answer,
+                'is_correct': user_answer.is_correct,
+                'points': question.points
+            })
+        
+        return render_template('quiz-results.html', results=results_data)
+        
+    except Exception as e:
+        app.logger.error(f"Error loading results: {str(e)}")
+        flash('Results not found', 'error')
+        return redirect(url_for('dashboard'))
     @app.route('/api/submit-quiz', methods=['POST'])
     def submit_quiz_legacy():
         return jsonify({"success": True, "message": "Use new quiz endpoints"})
