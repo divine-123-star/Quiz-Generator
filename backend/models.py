@@ -1,12 +1,5 @@
-# app/models.py
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
-from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
+# backend/models.py - FIXED VERSION
 
-db = SQLAlchemy()
-
-# backend/models.py - REPLACE THE USER CLASS WITH THIS
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
@@ -22,14 +15,13 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    # NO username field - REMOVED
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    quizzes = db.relationship('Quiz', backref='creator', lazy=True)
-    quiz_attempts = db.relationship('QuizAttempt', backref='user', lazy=True)
-    pdf_uploads = db.relationship('PDFUpload', backref='user', lazy=True)
+    quizzes = db.relationship('Quiz', backref='creator', lazy=True, cascade='all, delete-orphan')
+    quiz_attempts = db.relationship('QuizAttempt', backref='user', lazy=True, cascade='all, delete-orphan')
+    pdf_uploads = db.relationship('PDFUpload', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -48,14 +40,14 @@ class Quiz(db.Model):
     description = db.Column(db.Text)
     total_questions = db.Column(db.Integer, default=0)
     total_points = db.Column(db.Integer, default=0)
-    difficulty_level = db.Column(db.Enum('easy', 'medium', 'hard'), default='medium')
+    difficulty_level = db.Column(db.Enum('easy', 'medium', 'hard', name='difficulty_enum'), default='medium')
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     questions = db.relationship('QuizQuestion', backref='quiz', lazy=True, cascade='all, delete-orphan')
-    attempts = db.relationship('QuizAttempt', backref='quiz', lazy=True)
+    attempts = db.relationship('QuizAttempt', backref='quiz', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self):
         return {
@@ -66,7 +58,7 @@ class Quiz(db.Model):
             'total_points': self.total_points,
             'difficulty_level': self.difficulty_level,
             'created_at': self.created_at.isoformat(),
-            'creator_name': f"{self.creator.first_name} {self.creator.last_name}"
+            'creator_name': f"{self.creator.first_name} {self.creator.last_name}" if self.creator else 'Unknown'
         }
     
     def __repr__(self):
@@ -78,13 +70,13 @@ class QuizQuestion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     quiz_id = db.Column(db.Integer, db.ForeignKey('quizzes.id'), nullable=False)
     question_text = db.Column(db.Text, nullable=False)
-    question_type = db.Column(db.Enum('multiple_choice', 'true_false', 'short_answer'), default='multiple_choice')
+    question_type = db.Column(db.Enum('multiple_choice', 'true_false', 'short_answer', name='question_type_enum'), default='multiple_choice')
     points = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     answers = db.relationship('QuizAnswer', backref='question', lazy=True, cascade='all, delete-orphan')
-    user_answers = db.relationship('UserAnswer', backref='question', lazy=True)
+    user_answers = db.relationship('UserAnswer', backref='question', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self):
         return {
@@ -129,7 +121,7 @@ class QuizAttempt(db.Model):
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    user_answers = db.relationship('UserAnswer', backref='attempt', lazy=True)
+    user_answers = db.relationship('UserAnswer', backref='attempt', lazy=True, cascade='all, delete-orphan')
     
     def calculate_percentage(self):
         if self.total_points > 0:
@@ -165,7 +157,7 @@ class UserAnswer(db.Model):
             'id': self.id,
             'user_answer': self.user_answer,
             'is_correct': self.is_correct,
-            'question_text': self.question.question_text
+            'question_text': self.question.question_text if self.question else ''
         }
     
     def __repr__(self):
@@ -196,5 +188,3 @@ class PDFUpload(db.Model):
     
     def __repr__(self):
         return f'<PDFUpload {self.filename}>'
-    
-    # Create a simple hello world function to test the database connection

@@ -81,21 +81,21 @@
 
         /* Beautiful Buttons */
         .btn-hero {
-    background: rgba(255,255,255,0.2);
-    border: 2px solid rgba(255,255,255,0.3);
-    color: white;
-    padding: 15px 40px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border-radius: 50px;
-    margin: 10px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    transition: all 0.1s ease;
-}
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
 
         .btn-hero:hover {
             background: rgba(255,255,255,0.3);
@@ -189,7 +189,7 @@
     <!-- School Badge (Your School Logo Area) -->
     <div class="school-badge">
         <i class="fas fa-graduation-cap"></i>
-        <div class="badge-text">YOUR SCHOOL</div>
+        <div class="badge-text">RMU<br>EXCELLENCE</div>
     </div>
 
     <!-- Main Hero Section -->
@@ -206,15 +206,13 @@
                         Perfect for teachers, students, and anyone who wants to learn better.
                     </p>
                     
-                    <!-- Action Buttons -->
+                    <!-- Action Buttons - FIXED LINKS -->
                     <div class="hero-buttons">
-                        
-                           <a href="/register" class="btn-hero primary">
-                          <i class="fas fa-rocket me-2"></i>Start Creating Quizzes!
-                          </a>
-                          <a href="/login" class="btn-hero">
-                          <i class="fas fa-sign-in-alt me-2"></i>I Already Have Account
+                        <a href="/register" class="btn-hero primary">
+                            <i class="fas fa-rocket me-2"></i>Start Creating Quizzes!
                         </a>
+                        <a href="/login" class="btn-hero">
+                            <i class="fas fa-sign-in-alt me-2"></i>I Already Have Account
                         </a>
                     </div>
                 </div>
@@ -329,7 +327,7 @@
             <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9;">
                 Join thousands of students and teachers who are already using our AI Quiz Generator!
             </p>
-            <a href="register.html" class="btn-hero primary" style="font-size: 1.2rem; padding: 18px 50px;">
+            <a href="/register" class="btn-hero primary" style="font-size: 1.2rem; padding: 18px 50px;">
                 <i class="fas fa-user-plus me-2"></i>Create My Free Account Now!
             </a>
         </div>
@@ -369,6 +367,14 @@
                 document.querySelector(this.getAttribute('href')).scrollIntoView({
                     behavior: 'smooth'
                 });
+            });
+        });
+
+        // Add click tracking for debugging
+        document.querySelectorAll('.btn-hero').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                console.log('Button clicked:', this.href);
+                // Let the normal navigation proceed
             });
         });
     </script>
