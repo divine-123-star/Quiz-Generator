@@ -44,7 +44,7 @@
         .navbar-nav .nav-link {
             color: rgba(255,255,255,0.9) !important;
             font-weight: 500;
-            transition: all 0.1s ease;
+            transition: all 0.3s ease;
             margin: 0 0.5rem;
             padding: 0.5rem 1rem !important;
             border-radius: 20px;
@@ -78,7 +78,7 @@
             border: 3px solid rgba(255,255,255,0.5);
             backdrop-filter: blur(10px);
             z-index: 1001;
-           transition: all 0.1s ease;
+            transition: all 0.3s ease;
             cursor: pointer;
         }
 
@@ -244,7 +244,7 @@
             padding: 15px 20px;
             font-size: 1rem;
             background: rgba(255,255,255,0.8);
-            transition: all 0.1s ease;
+            transition: all 0.3s ease;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
         }
 
@@ -278,7 +278,7 @@
             margin-bottom: 0.5rem;
             font-size: 0.9rem;
             color: #6c757d;
-            transition: all 0.1s ease;
+            transition: all 0.3s ease;
         }
 
         .requirement i {
@@ -310,7 +310,7 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            transition: all 0.1s ease;
+            transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
             overflow: hidden;
@@ -324,7 +324,7 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.2s;
+            transition: left 0.5s;
         }
 
         .btn-create:hover::before {
@@ -355,7 +355,7 @@
             color: var(--primary);
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.1s ease;
+            transition: all 0.3s ease;
         }
 
         .form-links a:hover {
@@ -385,6 +385,25 @@
             text-align: center;
             padding: 2rem 0;
             margin-top: auto;
+        }
+
+        /* Alert styling */
+        .alert {
+            border-radius: 15px;
+            border: none;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+            border-left: 4px solid var(--success);
+            color: var(--dark);
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(238, 90, 82, 0.1) 100%);
+            border-left: 4px solid var(--danger);
+            color: var(--dark);
         }
 
         /* Mobile Responsive */
@@ -494,6 +513,9 @@
 
                 <!-- Form -->
                 <div class="card-body">
+                    <!-- Alert area for messages -->
+                    <div id="alertArea"></div>
+
                     <form id="registrationForm" method="POST" action="/register">
                         <!-- Full Name -->
                         <div class="form-group">
@@ -511,24 +533,6 @@
                             </label>
                             <input type="email" class="form-control" id="email" name="email" 
                                    placeholder="Enter your email address" required>
-                        </div>
-
-                        <!-- School Name -->
-                        <div class="form-group">
-                            <label for="schoolName" class="form-label">
-                                <i class="fas fa-school"></i>School Name (Optional)
-                            </label>
-                            <input type="text" class="form-control" id="schoolName" name="school_name" 
-                                   placeholder="Enter your school name">
-                        </div>
-
-                        <!-- Username -->
-                        <div class="form-group">
-                            <label for="username" class="form-label">
-                                <i class="fas fa-at"></i>Username
-                            </label>
-                            <input type="text" class="form-control" id="username" name="username" 
-                                   placeholder="Choose a unique username" required>
                         </div>
 
                         <!-- Password -->
@@ -604,11 +608,37 @@
         const confirmPassword = document.getElementById('confirmPassword');
         const submitBtn = document.getElementById('submitBtn');
         const passwordMatch = document.getElementById('passwordMatch');
+        const alertArea = document.getElementById('alertArea');
         
         const lengthReq = document.getElementById('length');
         const uppercaseReq = document.getElementById('uppercase');
         const numberReq = document.getElementById('number');
         const specialReq = document.getElementById('special');
+
+        // Show alert messages
+        function showAlert(message, type = 'info') {
+            const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+            const icon = type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle';
+            
+            alertArea.innerHTML = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="fas ${icon} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            // Auto-hide success messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    const alert = alertArea.querySelector('.alert');
+                    if (alert) {
+                        alert.classList.remove('show');
+                        setTimeout(() => alert.remove(), 300);
+                    }
+                }, 5000);
+            }
+        }
 
         function checkPasswordRequirements() {
             const value = password.value;
@@ -672,8 +702,7 @@
 
         function validateForm() {
             const allFieldsFilled = document.getElementById('fullName').value.trim() !== '' && 
-                                   document.getElementById('email').value.trim() !== '' && 
-                                   document.getElementById('username').value.trim() !== '';
+                                   document.getElementById('email').value.trim() !== '';
             
             const passwordValid = checkPasswordRequirements();
             const passwordsMatch = checkPasswordMatch();
@@ -691,10 +720,11 @@
             validateForm();
         });
 
-        ['fullName', 'email', 'username'].forEach(id => {
+        ['fullName', 'email'].forEach(id => {
             document.getElementById(id).addEventListener('input', validateForm);
         });
 
+        // FIXED FORM SUBMISSION - Updated to match backend expectations
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -703,16 +733,34 @@
             
             try {
                 const formData = new FormData(form);
+                
+                // Debug: Log form data
+                console.log('Form data being sent:');
+                for (let [key, value] of formData.entries()) {
+                    console.log(key, value);
+                }
+                
                 const response = await fetch('/register', {
                     method: 'POST',
                     body: formData
                 });
                 
-                const result = await response.json();
+                console.log('Response status:', response.status);
                 
-                if (response.ok && result.success) {
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Response error:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Registration result:', result);
+                
+                if (result.success) {
                     submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Account Created!';
                     submitBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+                    
+                    showAlert('🎉 ' + result.message, 'success');
                     
                     setTimeout(() => {
                         window.location.href = '/login';
@@ -722,10 +770,11 @@
                 }
                 
             } catch (error) {
+                console.error('Registration error:', error);
                 submitBtn.innerHTML = '<i class="fas fa-rocket me-2"></i>Create My Account';
                 submitBtn.disabled = false;
                 submitBtn.style.background = '';
-                alert('Error: ' + error.message);
+                showAlert('❌ Error: ' + error.message, 'error');
             }
         });
 

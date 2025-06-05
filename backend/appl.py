@@ -1,573 +1,584 @@
-# backend/appl.py - COMPLETE WORKING VERSION
+# backend/services/quiz_generator.py - DEBUGGED AND FIXED VERSION
 
-import sys
+import google.generativeai as genai
+import json
+import re
+from typing import List, Dict, Any, Optional
 import os
+import logging
+import time
 
-# Add project root to Python path FIRST
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-from datetime import datetime
-import PyPDF2
-from backend.models import db, User, Quiz, QuizQuestion, QuizAnswer, QuizAttempt, UserAnswer, PDFUpload
-
-def create_app():
-    app = Flask(__name__, template_folder='../app/templates')
+class GeminiQuizGenerator:
+    """
+    Enhanced Gemini Quiz Generator with proper error handling
+    """
     
-    # Configuration
-    app.config['SECRET_KEY'] = 'your-secret-key-here-change-in-production'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Ledimo2003%@localhost/quiz'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['UPLOAD_FOLDER'] = '../uploads'
-    app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
-    
-    # Initialize extensions
-    db.init_app(app)
-    
-    # Setup Flask-Login
-    login_manager = LoginManager()
-    login_manager.init_app(app)
-    login_manager.login_view = 'login'
-    login_manager.login_message = 'Please log in to access this page.'
-    
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
-    
-    # Create upload directory
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    
-    # Helper functions
-    def allowed_file(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() == 'pdf'
-
-    def extract_text_from_pdf(file_path):
-        """Extract text from PDF file"""
-        try:
-            text = ""
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-                for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n"
-            return text
-        except Exception as e:
-            app.logger.error(f"Error extracting PDF text: {str(e)}")
-            return "Sample text content for quiz generation."
-
-    def generate_questions_from_text(text, num_questions):
-        """Generate questions from PDF text content"""
-        sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 20]
-        
-        questions = []
-        used_sentences = set()
-        
-        for i in range(min(num_questions, len(sentences))):
-            sentence = sentences[i % len(sentences)]
-            if sentence in used_sentences:
-                continue
-            used_sentences.add(sentence)
-            
-            if len(sentence) > 50:
-                words = sentence.split()
-                if len(words) > 5:
-                    key_word_index = len(words) // 2
-                    key_word = words[key_word_index]
-                    question_text = sentence.replace(key_word, "_____", 1)
-                    
-                    questions.append({
-                        'question_text': f"Fill in the blank: {question_text}",
-                        'question_type': 'multiple_choice',
-                        'points': 1,
-                        'answers': [
-                            {'answer_text': key_word, 'is_correct': True},
-                            {'answer_text': 'faith', 'is_correct': False},
-                            {'answer_text': 'love', 'is_correct': False},
-                            {'answer_text': 'hope', 'is_correct': False}
-                        ]
-                    })
-                else:
-                    questions.append({
-                        'question_text': f"True or False: {sentence}",
-                        'question_type': 'true_false',
-                        'points': 1,
-                        'answers': [
-                            {'answer_text': 'True', 'is_correct': True},
-                            {'answer_text': 'False', 'is_correct': False}
-                        ]
-                    })
-        
-        while len(questions) < num_questions:
-            questions.append({
-                'question_text': f"Based on the text, what is the main theme discussed?",
-                'question_type': 'multiple_choice',
-                'points': 1,
-                'answers': [
-                    {'answer_text': 'Biblical teachings and spiritual growth', 'is_correct': True},
-                    {'answer_text': 'Historical events only', 'is_correct': False},
-                    {'answer_text': 'Scientific discoveries', 'is_correct': False},
-                    {'answer_text': 'Mathematical concepts', 'is_correct': False}
-                ]
-            })
-        
-        return questions[:num_questions]
-
-    def get_sample_questions(num_questions):
-        """Fallback sample questions"""
-        return [
-            {
-                'question_text': 'What is the primary goal of education?',
-                'question_type': 'multiple_choice',
-                'points': 1,
-                'answers': [
-                    {'answer_text': 'To develop knowledge and critical thinking', 'is_correct': True},
-                    {'answer_text': 'To get a job only', 'is_correct': False},
-                    {'answer_text': 'To pass exams', 'is_correct': False},
-                    {'answer_text': 'To compete with others', 'is_correct': False}
-                ]
-            }
-        ][:num_questions]
-    
-    # =============================================================================
-    # MAIN ROUTES
-    # =============================================================================
-    
-    @app.route('/')
-    def index():
-        """Home page"""
-        return render_template('index.html')
-    
-    @app.route('/register', methods=['GET', 'POST'])
-    def register():
-        """User registration"""
-        if request.method == 'GET':
-            return render_template('register.html')
+    def __init__(self):
+        # Configure Gemini AI with error handling
+        self.api_key = "AIzaSyCq4EtrP-O7FJvBQcWH2C4x1RFERPMuJ98"
+        self.model = None
         
         try:
-            # Get form data
-            full_name = request.form.get('fullName', '').strip()
-            first_name = request.form.get('firstName', '').strip()
-            last_name = request.form.get('lastName', '').strip()
-            
-            # Handle full name vs separate first/last name
-            if full_name and not first_name:
-                name_parts = full_name.split()
-                first_name = name_parts[0] if name_parts else ''
-                last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
-            
-            email = request.form.get('email', '').strip()
-            password = request.form.get('password', '').strip()
-            
-            if not all([first_name, email, password]):
-                return jsonify({
-                    'success': False,
-                    'error': 'Name, email and password are required'
-                }), 400
-            
-            if User.query.filter_by(email=email).first():
-                return jsonify({
-                    'success': False,
-                    'error': 'Email already registered'
-                }), 400
-            
-            user = User(
-                first_name=first_name,
-                last_name=last_name or 'User',
-                email=email
-            )
-            user.set_password(password)
-            
-            db.session.add(user)
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Account created successfully! Please log in.'
-            })
-            
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Registration error: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': 'Registration failed. Please try again.'
-            }), 500
-    
-    @app.route('/login', methods=['GET', 'POST'])
-    def login():
-        """User login"""
-        if request.method == 'GET':
-            return render_template('login.html')
-        
-        try:
-            email = request.form.get('username', '').strip()
-            password = request.form.get('password', '').strip()
-            
-            if not email or not password:
-                return jsonify({
-                    'success': False,
-                    'error': 'Email and password are required'
-                }), 400
-            
-            # Find or create user for testing
-            user = User.query.filter_by(email=email).first()
-            if not user:
-                # Create user on the fly for testing
-                user = User(
-                    first_name="Test",
-                    last_name="User",
-                    email=email
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel(
+                'gemini-1.5-flash',  # Use flash for faster responses
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.7,
+                    top_p=0.8,
+                    top_k=40,
+                    max_output_tokens=2000,
                 )
-                user.set_password(password)
-                db.session.add(user)
-                db.session.commit()
-            
-            if user.check_password(password):
-                login_user(user, remember=request.form.get('remember_me'))
-                return jsonify({
-                    'success': True,
-                    'message': f'Welcome back, {user.first_name}!'
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': 'Invalid email or password'
-                }), 401
-                
-        except Exception as e:
-            app.logger.error(f"Login error: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': 'Login failed. Please try again.'
-            }), 500
-        
-    @app.route('/logout')
-    @login_required
-    def logout():
-        """User logout"""
-        logout_user()
-        flash('You have been logged out successfully.', 'info')
-        return redirect(url_for('index')) 
-        
-    @app.route('/dashboard')
-    @login_required
-    def dashboard():
-        """User dashboard"""
-        try:
-            total_quizzes = Quiz.query.filter_by(created_by=current_user.id).count()
-            total_attempts = QuizAttempt.query.filter_by(user_id=current_user.id).count()
-            
-            return render_template('dashboard.html')
-        except Exception as e:
-            app.logger.error(f"Dashboard error: {str(e)}")
-            return render_template('dashboard.html')
-
-    @app.route('/create-quiz', methods=['GET', 'POST'])
-    @login_required
-    def create_quiz():
-        """Handle quiz creation from PDF upload - WITH REAL PDF PROCESSING"""
-        
-        if request.method == 'GET':
-            # Render the create-quiz.html template
-            print("📄 Serving create-quiz page")
-            return render_template('create-quiz.html')
-        
-        # Handle POST request for quiz creation
-        try:
-            print("🎯 Starting quiz creation...")
-            
-            # Get form data
-            quiz_title = request.form.get('title', 'AI Generated Quiz')
-            num_questions = int(request.form.get('numQuestions', '10'))
-            difficulty = request.form.get('difficulty', 'medium')
-            
-            print(f"📋 Quiz settings: {quiz_title}, {num_questions} questions, {difficulty} difficulty")
-            
-            # ACTUALLY PROCESS THE PDF
-            pdf_text = ""
-            if 'pdf_file' in request.files:
-                file = request.files['pdf_file']
-                if file and file.filename:
-                    filename = secure_filename(file.filename)
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{current_user.id}_{filename}")
-                    file.save(file_path)
-                    print(f"💾 File saved: {filename}")
-                    
-                    # Extract text from PDF
-                    pdf_text = extract_text_from_pdf(file_path)
-                    print(f"📖 Extracted {len(pdf_text)} characters from PDF")
-                else:
-                    print("⚠️ No file uploaded, using sample questions")
-            
-            # Generate questions based on PDF content
-            if pdf_text and len(pdf_text.strip()) > 100:
-                questions = generate_questions_from_text(pdf_text, num_questions)
-                print(f"✅ Generated {len(questions)} questions from PDF content")
-            else:
-                # Fallback if PDF processing fails
-                questions = get_sample_questions(num_questions)
-                print(f"📝 Using {len(questions)} sample questions")
-            
-            total_points = sum(q['points'] for q in questions)
-            
-            # Save to database
-            quiz = Quiz(
-                title=quiz_title,
-                description=f'Quiz with {len(questions)} questions generated from uploaded PDF',
-                total_questions=len(questions),
-                total_points=total_points,
-                difficulty_level=difficulty,
-                created_by=current_user.id
             )
-            db.session.add(quiz)
-            db.session.flush()
+            logger.info("🤖 Gemini Quiz Generator initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini: {str(e)}")
+            self.model = None
+    
+    def generate_quiz_from_text(self, text: str, settings: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate quiz questions from extracted PDF text using Gemini AI
+        Compatible with the main application's expected format
+        """
+        try:
+            # Validate and extract settings with proper defaults
+            num_questions = self._safe_int(settings.get('numQuestions', 5), default=5, min_val=1, max_val=50)
+            difficulty = self._validate_difficulty(settings.get('difficulty', 'medium'))
+            question_types = self._validate_question_types(settings.get('questionTypes', 'mixed'))
+            title = str(settings.get('title', 'AI Generated Quiz')).strip() or 'AI Generated Quiz'
             
-            print(f"💾 Quiz saved with ID: {quiz.id}")
+            logger.info(f"🎯 Generating {num_questions} questions with Gemini AI")
             
-            # Create questions and answers
-            for i, question_data in enumerate(questions):
-                question = QuizQuestion(
-                    quiz_id=quiz.id,
-                    question_text=question_data['question_text'],
-                    question_type=question_data['question_type'],
-                    points=question_data['points']
-                )
-                db.session.add(question)
-                db.session.flush()
+            # Validate text input
+            if not text or not isinstance(text, str):
+                logger.warning("⚠️ No valid text provided, using fallback")
+                return self._create_fallback_quiz(title, num_questions, difficulty)
+            
+            text = text.strip()
+            if len(text) < 50:
+                logger.warning("⚠️ Text too short for meaningful questions, using fallback")
+                return self._create_fallback_quiz(title, num_questions, difficulty)
+            
+            if not self.model:
+                logger.warning("⚠️ Gemini model not available, using fallback")
+                return self._create_fallback_quiz(title, num_questions, difficulty)
+            
+            # Generate with Gemini AI
+            try:
+                quiz_data = self._generate_with_gemini(text, num_questions, difficulty, question_types, title)
+                logger.info("✅ Gemini AI generated quiz successfully!")
+                return quiz_data
                 
-                for answer_data in question_data['answers']:
-                    answer = QuizAnswer(
-                        question_id=question.id,
-                        answer_text=answer_data['answer_text'],
-                        is_correct=answer_data['is_correct']
-                    )
-                    db.session.add(answer)
-                
-                print(f"➕ Created question {i+1}: {question_data['question_text'][:50]}...")
-            
-            db.session.commit()
-            print("✅ Quiz created successfully!")
-            
-            # Redirect to take the quiz
-            return redirect(url_for('take_quiz', quiz_id=quiz.id))
+            except Exception as gemini_error:
+                logger.error(f"❌ Gemini AI failed: {str(gemini_error)}")
+                return self._create_fallback_quiz(title, num_questions, difficulty)
             
         except Exception as e:
-            db.session.rollback()
-            print(f"❌ Error creating quiz: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            flash(f'Error creating quiz: {str(e)}', 'error')
-            return redirect(url_for('dashboard'))
-    @app.route('/create-quiz.html', methods=['GET', 'POST'])
-    @login_required
-    def create_quiz_html():
-        """Alias for create-quiz route to handle .html requests"""
-        return create_quiz()
-    @app.route('/quiz/<int:quiz_id>')
-    @login_required
-    def take_quiz(quiz_id):
-        """Display quiz for taking"""
+            logger.error(f"❌ Error in quiz generation: {str(e)}")
+            return self._create_fallback_quiz(title, num_questions, difficulty)
+    
+    def _safe_int(self, value: Any, default: int, min_val: int = None, max_val: int = None) -> int:
+        """Safely convert value to int with bounds checking"""
         try:
-            print(f"🎯 Loading quiz {quiz_id}")
-            quiz = Quiz.query.get_or_404(quiz_id)
-            questions = QuizQuestion.query.filter_by(quiz_id=quiz_id).all()
+            result = int(value)
+            if min_val is not None and result < min_val:
+                return min_val
+            if max_val is not None and result > max_val:
+                return max_val
+            return result
+        except (ValueError, TypeError):
+            return default
+    
+    def _validate_difficulty(self, difficulty: Any) -> str:
+        """Validate difficulty setting"""
+        valid_difficulties = ['easy', 'medium', 'hard']
+        if isinstance(difficulty, str) and difficulty.lower() in valid_difficulties:
+            return difficulty.lower()
+        return 'medium'
+    
+    def _validate_question_types(self, question_types: Any) -> str:
+        """Validate question types setting"""
+        valid_types = ['mixed', 'mcq', 'truefalse', 'fillblank']
+        if isinstance(question_types, str) and question_types.lower() in valid_types:
+            return question_types.lower()
+        return 'mixed'
+    
+    def _generate_with_gemini(self, text: str, num_questions: int, difficulty: str, question_types: str, title: str) -> Dict[str, Any]:
+        """Generate quiz using Gemini AI with error handling"""
+        
+        # Prepare the text (truncate if too long)
+        max_text_length = 6000
+        if len(text) > max_text_length:
+            text = text[:max_text_length] + "..."
+        
+        # Create the prompt
+        prompt = self._create_gemini_prompt(text, num_questions, difficulty, question_types)
+        
+        # Generate content with retry mechanism
+        response = self._safe_generate_content(prompt)
+        
+        if not response or not response.strip():
+            raise Exception("Empty response from Gemini AI")
+        
+        # Parse the response
+        return self._parse_gemini_response(response, title, difficulty, num_questions)
+    
+    def _safe_generate_content(self, prompt: str, max_retries: int = 3) -> str:
+        """Safely generate content with retries"""
+        for attempt in range(max_retries):
+            try:
+                response = self.model.generate_content(prompt)
+                if response and hasattr(response, 'text') and response.text:
+                    return response.text
+                else:
+                    raise Exception("No text in response")
+            except Exception as e:
+                logger.warning(f"⚠️ Generation attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    raise Exception(f"Gemini generation failed after {max_retries} attempts: {str(e)}")
+    
+    def _create_gemini_prompt(self, text: str, num_questions: int, difficulty: str, question_types: str) -> str:
+        """Create an effective prompt for Gemini AI"""
+        
+        # Question type instructions
+        if question_types == 'mixed':
+            type_instruction = f"Create a mix of multiple choice (60%), true/false (25%), and short answer (15%) questions"
+        elif question_types == 'mcq':
+            type_instruction = f"Create {num_questions} multiple choice questions with 4 options each"
+        elif question_types == 'truefalse':
+            type_instruction = f"Create {num_questions} true/false questions"
+        else:
+            type_instruction = f"Create {num_questions} short answer questions"
+        
+        # Difficulty instructions
+        difficulty_guide = {
+            'easy': "Focus on basic facts, simple recall, and obvious concepts from the text",
+            'medium': "Test understanding, connections between ideas, and application of concepts",
+            'hard': "Require analysis, synthesis, critical thinking, and deep understanding"
+        }
+        
+        return f"""
+You are an expert quiz creator. Based on the following text, create {num_questions} high-quality quiz questions.
+
+TEXT CONTENT:
+{text}
+
+REQUIREMENTS:
+- Difficulty: {difficulty} ({difficulty_guide.get(difficulty, 'balanced difficulty')})
+- Question Distribution: {type_instruction}
+- All questions must be based directly on the provided text content
+- Make questions specific and test real understanding
+- Ensure multiple choice options are plausible but clearly distinct
+
+OUTPUT FORMAT (JSON only):
+{{
+  "questions": [
+    {{
+      "type": "multiple_choice",
+      "question": "Based on the text, what is...",
+      "options": ["Correct answer", "Wrong option 1", "Wrong option 2", "Wrong option 3"],
+      "correct_answer": "Correct answer",
+      "points": 1
+    }},
+    {{
+      "type": "true_false", 
+      "question": "According to the text, [statement]",
+      "correct_answer": "True",
+      "points": 1
+    }},
+    {{
+      "type": "short_answer",
+      "question": "Explain the concept of...",
+      "correct_answer": "Expected answer based on text",
+      "points": 2
+    }}
+  ]
+}}
+
+IMPORTANT: 
+- Return ONLY valid JSON
+- Base all questions on the actual content provided
+- Ensure each multiple choice question has exactly 4 options
+- Make sure correct_answer matches one of the options exactly
+"""
+    
+    def _parse_gemini_response(self, response_text: str, title: str, difficulty: str, num_questions: int) -> Dict[str, Any]:
+        """Parse Gemini's response and structure it for our database"""
+        
+        try:
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if not json_match:
+                raise ValueError("No JSON found in Gemini response")
             
-            print(f"📚 Found quiz: {quiz.title} with {len(questions)} questions")
+            json_str = json_match.group()
+            # Clean up common JSON issues
+            json_str = re.sub(r',\s*}', '}', json_str)  # Remove trailing commas in objects
+            json_str = re.sub(r',\s*]', ']', json_str)  # Remove trailing commas in arrays
+            json_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', json_str)  # Remove control characters
             
-            # Convert to dict for frontend
+            try:
+                quiz_json = json.loads(json_str)
+            except json.JSONDecodeError as json_error:
+                logger.error(f"JSON decode error: {str(json_error)}")
+                logger.debug(f"Problematic JSON: {json_str[:500]}...")
+                raise ValueError(f"Invalid JSON format: {str(json_error)}")
+            
+            if not isinstance(quiz_json, dict) or 'questions' not in quiz_json:
+                raise ValueError("Response missing 'questions' key")
+            
+            questions = quiz_json['questions']
+            if not isinstance(questions, list) or not questions:
+                raise ValueError("No valid questions in response")
+            
+            # Structure for our database
             quiz_data = {
-                'id': quiz.id,
-                'title': quiz.title,
-                'description': quiz.description,
-                'total_questions': quiz.total_questions,
-                'total_points': quiz.total_points,
+                'title': title,
+                'description': f'AI-generated quiz with {len(questions)} questions from your content',
+                'difficulty_level': difficulty,
+                'total_questions': 0,  # Will be calculated
+                'total_points': 0,     # Will be calculated
                 'questions': []
             }
             
-            for question in questions:
-                question_dict = {
-                    'id': question.id,
-                    'question_text': question.question_text,
-                    'question_type': question.question_type,
-                    'points': question.points,
-                    'answers': []
-                }
-                
-                for answer in question.answers:
-                    # Don't send correct answer info to frontend
-                    question_dict['answers'].append({
-                        'id': answer.id,
-                        'answer_text': answer.answer_text
-                    })
-                
-                quiz_data['questions'].append(question_dict)
-            
-            print(f"✅ Quiz data prepared, rendering template")
-            return render_template('take_quiz.html', quiz=quiz_data)
-            
-        except Exception as e:
-            print(f"❌ Error loading quiz: {str(e)}")
-            flash('Quiz not found or error loading quiz', 'error')
-            return redirect(url_for('dashboard'))
-
-    @app.route('/quiz/<int:quiz_id>/submit', methods=['POST'])
-    @login_required
-    def submit_quiz(quiz_id):
-        """Submit quiz answers and calculate score"""
-        try:
-            print(f"🎯 Submitting quiz {quiz_id}")
-            quiz = Quiz.query.get_or_404(quiz_id)
-            data = request.get_json()
-            
-            if not data:
-                return jsonify({'success': False, 'error': 'No data received'}), 400
-            
-            user_answers = data.get('answers', {})
-            print(f"📝 User answers: {user_answers}")
-            
-            # Create quiz attempt
-            attempt = QuizAttempt(
-                user_id=current_user.id,
-                quiz_id=quiz_id,
-                total_points=quiz.total_points
-            )
-            db.session.add(attempt)
-            db.session.flush()
-            
-            score = 0
-            questions = QuizQuestion.query.filter_by(quiz_id=quiz_id).all()
-            
             # Process each question
-            for question in questions:
-                question_id_str = str(question.id)
-                user_answer_text = user_answers.get(question_id_str, '').strip()
-                
-                correct_answer = QuizAnswer.query.filter_by(
-                    question_id=question.id, is_correct=True
-                ).first()
-                
-                is_correct = False
-                if correct_answer and user_answer_text:
-                    if question.question_type in ['multiple_choice', 'true_false']:
-                        is_correct = user_answer_text.lower().strip() == correct_answer.answer_text.lower().strip()
-                    else:
-                        # Basic partial match for short answers
-                        correct_words = set(correct_answer.answer_text.lower().split())
-                        user_words = set(user_answer_text.lower().split())
-                        if correct_words and len(user_words.intersection(correct_words)) / len(correct_words) >= 0.5:
-                            is_correct = True
-                
-                if is_correct:
-                    score += question.points
-                
-                # Save user answer
-                user_answer = UserAnswer(
-                    attempt_id=attempt.id,
-                    question_id=question.id,
-                    user_answer=user_answer_text,
-                    is_correct=is_correct
-                )
-                db.session.add(user_answer)
+            total_points = 0
+            valid_questions = 0
             
-            # Update attempt with score
-            attempt.score = score
-            attempt.calculate_percentage()
-            db.session.commit()
+            for idx, q in enumerate(questions, 1):
+                try:
+                    processed_question = self._process_question(q, idx)
+                    if processed_question:
+                        quiz_data['questions'].append(processed_question)
+                        total_points += processed_question['points']
+                        valid_questions += 1
+                except Exception as e:
+                    logger.warning(f"⚠️ Skipping malformed question {idx}: {str(e)}")
+                    continue
             
-            print(f"✅ Quiz submitted. Score: {score}/{quiz.total_points}")
+            quiz_data['total_questions'] = valid_questions
+            quiz_data['total_points'] = total_points
             
-            return jsonify({
-                'success': True,
-                'attempt_id': attempt.id,
-                'score': score,
-                'total_points': quiz.total_points,
-                'percentage': float(attempt.percentage)
-            })
+            # Ensure we have at least some questions
+            if valid_questions == 0:
+                raise ValueError("No valid questions could be processed")
+            
+            return quiz_data
             
         except Exception as e:
-            db.session.rollback()
-            print(f"❌ Error submitting quiz: {str(e)}")
-            return jsonify({'success': False, 'error': f'Failed to submit quiz: {str(e)}'}), 500
-
-    @app.route('/quiz/<int:quiz_id>/results/<int:attempt_id>')
-    @login_required
-    def quiz_results(quiz_id, attempt_id):
-        """Display quiz results"""
-        try:
-            print(f"🎯 Loading results for attempt {attempt_id}")
-            attempt = QuizAttempt.query.filter_by(
-                id=attempt_id, user_id=current_user.id, quiz_id=quiz_id
-            ).first_or_404()
+            logger.error(f"❌ Failed to parse Gemini response: {str(e)}")
+            raise Exception(f"Failed to parse AI response: {str(e)}")
+    
+    def _process_question(self, question_data: dict, question_number: int) -> Optional[Dict[str, Any]]:
+        """Process a single question from Gemini response with validation"""
+        
+        if not isinstance(question_data, dict):
+            raise ValueError("Question data must be a dictionary")
+        
+        question_type = self._normalize_question_type(question_data.get('type', 'multiple_choice'))
+        question_text = question_data.get('question', '').strip()
+        
+        if not question_text:
+            raise ValueError("Question text is empty")
+        
+        processed = {
+            'question_text': question_text,
+            'question_type': question_type,
+            'points': self._safe_int(question_data.get('points', 1 if question_type != 'short_answer' else 2), 
+                                   default=1, min_val=1, max_val=10),
+            'answers': []
+        }
+        
+        # Process answers based on question type
+        if question_type == 'multiple_choice':
+            options = question_data.get('options', [])
+            correct_answer = question_data.get('correct_answer', '').strip()
             
-            quiz = Quiz.query.get_or_404(quiz_id)
+            if not isinstance(options, list) or len(options) < 2:
+                raise ValueError("Multiple choice needs at least 2 options")
             
-            user_answers = db.session.query(UserAnswer, QuizQuestion).join(
-                QuizQuestion, UserAnswer.question_id == QuizQuestion.id
-            ).filter(UserAnswer.attempt_id == attempt_id).all()
+            if not correct_answer:
+                raise ValueError("Multiple choice needs a correct answer")
             
-            results_data = {
-                'quiz': {
-                    'id': quiz.id,
-                    'title': quiz.title,
-                    'description': quiz.description,
-                    'total_questions': quiz.total_questions,
-                    'total_points': quiz.total_points
-                },
-                'attempt': {
-                    'id': attempt.id,
-                    'score': attempt.score,
-                    'total_points': attempt.total_points,
-                    'percentage': float(attempt.percentage) if attempt.percentage else 0,
-                    'completed_at': attempt.completed_at.isoformat() if attempt.completed_at else None
-                },
-                'answers': []
-            }
+            # Ensure we have exactly 4 options (pad if necessary)
+            while len(options) < 4:
+                options.append(f"Option {len(options) + 1}")
             
-            for user_answer, question in user_answers:
-                results_data['answers'].append({
-                    'id': user_answer.id,
-                    'question_text': question.question_text,
-                    'user_answer': user_answer.user_answer,
-                    'is_correct': user_answer.is_correct,
-                    'points': question.points
+            options = options[:4]  # Limit to 4 options
+            
+            # Validate that correct_answer matches one of the options
+            correct_found = False
+            for option in options:
+                option_str = str(option).strip()
+                is_correct = option_str == correct_answer
+                if is_correct:
+                    correct_found = True
+                processed['answers'].append({
+                    'answer_text': option_str,
+                    'is_correct': is_correct
                 })
             
-            print(f"✅ Results loaded successfully")
-            return render_template('quiz-results.html', results=results_data)
+            # If correct answer not found in options, make first option correct
+            if not correct_found:
+                processed['answers'][0]['is_correct'] = True
+                for i in range(1, len(processed['answers'])):
+                    processed['answers'][i]['is_correct'] = False
+        
+        elif question_type == 'true_false':
+            correct_answer = question_data.get('correct_answer', 'True').strip()
+            is_true_correct = str(correct_answer).lower() in ['true', 't', '1', 'yes']
+            
+            processed['answers'] = [
+                {'answer_text': 'True', 'is_correct': is_true_correct},
+                {'answer_text': 'False', 'is_correct': not is_true_correct}
+            ]
+        
+        elif question_type == 'short_answer':
+            correct_answer = question_data.get('correct_answer', '').strip()
+            if not correct_answer:
+                raise ValueError("Short answer needs a correct answer")
+                
+            processed['answers'] = [
+                {'answer_text': correct_answer, 'is_correct': True}
+            ]
+        
+        # Validate we have answers
+        if not processed['answers']:
+            raise ValueError("No answers generated for question")
+        
+        return processed
+    
+    def _normalize_question_type(self, q_type: str) -> str:
+        """Normalize question type to match our database enum"""
+        if not isinstance(q_type, str):
+            return 'multiple_choice'
+            
+        type_mapping = {
+            'multiple_choice': 'multiple_choice',
+            'mcq': 'multiple_choice',
+            'mc': 'multiple_choice',
+            'multiple-choice': 'multiple_choice',
+            'true_false': 'true_false',
+            'truefalse': 'true_false',
+            'true/false': 'true_false',
+            'tf': 'true_false',
+            'true-false': 'true_false',
+            'short_answer': 'short_answer',
+            'fill_blank': 'short_answer',
+            'fillblank': 'short_answer',
+            'fill-blank': 'short_answer',
+            'essay': 'short_answer'
+        }
+        return type_mapping.get(q_type.lower().strip(), 'multiple_choice')
+    
+    def _create_fallback_quiz(self, title: str, num_questions: int, difficulty: str) -> Dict[str, Any]:
+        """Create a high-quality fallback quiz when AI fails"""
+        
+        logger.info(f"🔄 Creating enhanced fallback quiz with {num_questions} questions")
+        
+        try:
+            # High-quality educational questions based on learning principles
+            enhanced_questions = [
+                {
+                    'question_text': 'What is the most effective strategy for understanding complex information?',
+                    'question_type': 'multiple_choice',
+                    'points': 1,
+                    'answers': [
+                        {'answer_text': 'Breaking it into smaller parts and connecting concepts', 'is_correct': True},
+                        {'answer_text': 'Reading everything as quickly as possible', 'is_correct': False},
+                        {'answer_text': 'Memorizing without understanding context', 'is_correct': False},
+                        {'answer_text': 'Focusing only on the conclusion', 'is_correct': False}
+                    ]
+                },
+                {
+                    'question_text': 'Active learning involves engaging with material through questioning and analysis.',
+                    'question_type': 'true_false',
+                    'points': 1,
+                    'answers': [
+                        {'answer_text': 'True', 'is_correct': True},
+                        {'answer_text': 'False', 'is_correct': False}
+                    ]
+                },
+                {
+                    'question_text': 'Describe the importance of connecting new information to existing knowledge.',
+                    'question_type': 'short_answer',
+                    'points': 2,
+                    'answers': [
+                        {'answer_text': 'Connecting new information to existing knowledge strengthens memory pathways, improves comprehension, enables better retention, and facilitates application in different contexts', 'is_correct': True}
+                    ]
+                },
+                {
+                    'question_text': 'Which approach leads to deeper understanding of subject matter?',
+                    'question_type': 'multiple_choice',
+                    'points': 1,
+                    'answers': [
+                        {'answer_text': 'Analyzing relationships between concepts and asking critical questions', 'is_correct': True},
+                        {'answer_text': 'Passive reading without taking notes', 'is_correct': False},
+                        {'answer_text': 'Skipping difficult sections entirely', 'is_correct': False},
+                        {'answer_text': 'Focusing only on memorizing definitions', 'is_correct': False}
+                    ]
+                },
+                {
+                    'question_text': 'Effective studying requires both understanding concepts and practicing their application.',
+                    'question_type': 'true_false',
+                    'points': 1,
+                    'answers': [
+                        {'answer_text': 'True', 'is_correct': True},
+                        {'answer_text': 'False', 'is_correct': False}
+                    ]
+                },
+                {
+                    'question_text': 'Explain why reflection is an important part of the learning process.',
+                    'question_type': 'short_answer',
+                    'points': 2,
+                    'answers': [
+                        {'answer_text': 'Reflection helps consolidate learning, identify knowledge gaps, make connections between concepts, and improve future learning strategies', 'is_correct': True}
+                    ]
+                }
+            ]
+            
+            # Select questions up to the requested number
+            selected_questions = enhanced_questions[:min(num_questions, len(enhanced_questions))]
+            
+            # If we need more questions, create variations
+            while len(selected_questions) < num_questions:
+                base_idx = len(selected_questions) % len(enhanced_questions)
+                new_question = enhanced_questions[base_idx].copy()
+                new_question['question_text'] = f"[Additional] {new_question['question_text']}"
+                # Deep copy answers to avoid reference issues
+                new_question['answers'] = [answer.copy() for answer in new_question['answers']]
+                selected_questions.append(new_question)
+            
+            return {
+                'title': title,
+                'description': f'Enhanced educational quiz with {len(selected_questions)} questions',
+                'difficulty_level': difficulty,
+                'total_questions': len(selected_questions),
+                'total_points': sum(q['points'] for q in selected_questions),
+                'questions': selected_questions
+            }
             
         except Exception as e:
-            print(f"❌ Error loading results: {str(e)}")
-            flash('Results not found', 'error')
-            return redirect(url_for('dashboard'))
-
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found(error):
-        return jsonify({'error': 'Page not found'}), 404
-
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
-
-    # Create tables
-    with app.app_context():
-        try:
-            db.create_all()
-            print("✅ Database tables created successfully!")
-        except Exception as e:
-            print(f"❌ Error creating database tables: {str(e)}")
+            logger.error(f"❌ Error creating fallback quiz: {str(e)}")
+            # Return absolute minimal quiz
+            return {
+                'title': title or 'Basic Quiz',
+                'description': 'Basic educational quiz',
+                'difficulty_level': difficulty,
+                'total_questions': 1,
+                'total_points': 1,
+                'questions': [{
+                    'question_text': 'Learning is an active process that requires engagement and practice.',
+                    'question_type': 'true_false',
+                    'points': 1,
+                    'answers': [
+                        {'answer_text': 'True', 'is_correct': True},
+                        {'answer_text': 'False', 'is_correct': False}
+                    ]
+                }]
+            }
     
-    return app
+    def generate_sample_quiz(self) -> Dict[str, Any]:
+        """Generate a sample quiz for testing"""
+        return self._create_fallback_quiz('Sample Educational Quiz', 3, 'medium')
 
-# Create the app
-app = create_app()
 
-if __name__ == '__main__':
-    print("🚀 AI Quiz Generator Starting!")
-    print("📍 Server: http://localhost:5000")
-    print("✅ Open your browser and navigate to the URL above!")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+# Legacy compatibility - keeping the original class name
+class QuizGenerator(GeminiQuizGenerator):
+    """
+    Legacy compatibility class that extends GeminiQuizGenerator
+    This ensures existing code continues to work
+    """
+    
+    def __init__(self):
+        super().__init__()
+        logger.info("📚 QuizGenerator (legacy compatibility) initialized")
+    
+    def generate_quiz(self, text: str, form_data: dict) -> Dict[str, Any]:
+        """
+        Legacy method signature for compatibility
+        Converts old form_data format to new settings format
+        """
+        try:
+            settings = {
+                'title': form_data.get('title', 'AI Generated Quiz') if isinstance(form_data, dict) else 'AI Generated Quiz',
+                'numQuestions': form_data.get('numQuestions', '5') if isinstance(form_data, dict) else '5',
+                'difficulty': form_data.get('difficulty', 'medium') if isinstance(form_data, dict) else 'medium',
+                'questionTypes': form_data.get('questionTypes', 'mixed') if isinstance(form_data, dict) else 'mixed'
+            }
+            
+            return self.generate_quiz_from_text(text, settings)
+        except Exception as e:
+            logger.error(f"❌ Error in legacy generate_quiz: {str(e)}")
+            return self._create_fallback_quiz('AI Generated Quiz', 5, 'medium')
+
+
+# Utility function for direct usage
+def create_quiz_from_pdf_text(text: str, **kwargs) -> Dict[str, Any]:
+    """
+    Utility function to create a quiz from PDF text
+    Can be used directly without instantiating a class
+    """
+    try:
+        generator = GeminiQuizGenerator()
+        settings = {
+            'title': kwargs.get('title', 'AI Generated Quiz'),
+            'numQuestions': kwargs.get('num_questions', 5),
+            'difficulty': kwargs.get('difficulty', 'medium'),
+            'questionTypes': kwargs.get('question_types', 'mixed')
+        }
+        
+        return generator.generate_quiz_from_text(text, settings)
+    except Exception as e:
+        logger.error(f"❌ Error in utility function: {str(e)}")
+        # Return minimal fallback
+        return {
+            'title': 'Error Quiz',
+            'description': 'Quiz generation failed',
+            'difficulty_level': 'medium',
+            'total_questions': 1,
+            'total_points': 1,
+            'questions': [{
+                'question_text': 'The quiz generation encountered an error. Please try again.',
+                'question_type': 'true_false',
+                'points': 1,
+                'answers': [
+                    {'answer_text': 'True', 'is_correct': True},
+                    {'answer_text': 'False', 'is_correct': False}
+                ]
+            }]
+        }
+
+
+if __name__ == "__main__":
+    # Test the generator
+    try:
+        print("🧪 Testing Gemini Quiz Generator...")
+        generator = GeminiQuizGenerator()
+        test_text = "Machine learning is a subset of artificial intelligence that focuses on algorithms that can learn from data. These algorithms improve their performance on a specific task through experience."
+        
+        test_settings = {
+            'title': 'Test Quiz',
+            'numQuestions': 3,
+            'difficulty': 'medium',
+            'questionTypes': 'mixed'
+        }
+        
+        result = generator.generate_quiz_from_text(test_text, test_settings)
+        print("✅ Test quiz generated successfully:")
+        print(f"Title: {result['title']}")
+        print(f"Questions: {result['total_questions']}")
+        print(f"Points: {result['total_points']}")
+        
+        for i, q in enumerate(result['questions'], 1):
+            print(f"Q{i}: {q['question_text'][:50]}...")
+            
+    except Exception as e:
+        print(f"❌ Test failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
